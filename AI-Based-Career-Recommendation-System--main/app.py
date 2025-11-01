@@ -1,32 +1,86 @@
 import pickle
 import numpy as np
 import pandas as pd
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 import warnings
 
 # Suppress sklearn warnings
 warnings.filterwarnings("ignore", category=UserWarning)
 
+# API-only Flask application for career recommendations
+
 app = Flask(__name__)
 CORS(app)  # Enable CORS for React frontend
 
 # -------- Load model and encoders --------
-model           = pickle.load(open("model.pkl", "rb"))
-edu_enc         = pickle.load(open("edu_encoder.pkl", "rb"))
-skill_enc       = pickle.load(open("skills_encoder.pkl", "rb"))
-int_enc         = pickle.load(open("interests_encoder.pkl", "rb"))
-career_enc      = pickle.load(open("career_encoder.pkl", "rb"))
-feature_columns = pickle.load(open("feature_columns.pkl", "rb"))
+try:
+    model           = pickle.load(open("model.pkl", "rb"))
+    edu_enc         = pickle.load(open("edu_encoder.pkl", "rb"))
+    skill_enc       = pickle.load(open("skills_encoder.pkl", "rb"))
+    int_enc         = pickle.load(open("interests_encoder.pkl", "rb"))
+    career_enc      = pickle.load(open("career_encoder.pkl", "rb"))
+    feature_columns = pickle.load(open("feature_columns.pkl", "rb"))
+    print("All models loaded successfully")
+except Exception as e:
+    print(f"Error loading models: {str(e)}")
+    # Initialize as None to handle gracefully
+    model = edu_enc = skill_enc = int_enc = career_enc = feature_columns = None
 
 @app.route("/")
 def home():
-    return render_template(
-        "index.html",
-        skill_options=sorted(skill_enc.classes_),
-        interest_options=sorted(int_enc.classes_),
-        edu_options=list(edu_enc.classes_)
-    )
+    try:
+        return {
+            "message": "AI Career Recommendation System API",
+            "status": "running",
+            "endpoints": {
+                "POST /predict": "Get career recommendation",
+                "GET /options": "Get available options for form fields",
+                "GET /health": "Health check"
+            },
+            "example_request": {
+                "name": "John Doe",
+                "age": 25,
+                "education": "Bachelor's",
+                "skills": ["Python", "Machine Learning"],
+                "interests": ["Technology", "Problem Solving"]
+            }
+        }
+    except Exception as e:
+        return {"error": f"Home route error: {str(e)}"}, 500
+
+@app.route("/health")
+def health():
+    try:
+        # Test if models are loaded
+        model_status = "loaded" if model is not None else "not loaded"
+        edu_status = "loaded" if edu_enc is not None else "not loaded"
+        skill_status = "loaded" if skill_enc is not None else "not loaded"
+        
+        return {
+            "status": "healthy",
+            "models": {
+                "main_model": model_status,
+                "education_encoder": edu_status,
+                "skills_encoder": skill_status
+            }
+        }
+    except Exception as e:
+        return {"error": f"Health check failed: {str(e)}"}, 500
+
+@app.route("/options")
+def get_options():
+    try:
+        if skill_enc is None or int_enc is None or edu_enc is None:
+            return {"error": "Models not loaded properly"}, 500
+            
+        return {
+            "skills": sorted(skill_enc.classes_.tolist()),
+            "interests": sorted(int_enc.classes_.tolist()),
+            "education": edu_enc.classes_.tolist()
+        }
+    except Exception as e:
+        return {"error": f"Options endpoint error: {str(e)}"}, 500
 
 @app.route("/predict", methods=["POST"])
 def predict():
