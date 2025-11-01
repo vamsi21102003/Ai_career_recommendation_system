@@ -2,6 +2,10 @@ services:
   - type: web
     name: ai-career-recommendation
     env: node
-    buildCommand: npm install && npm run build
+    region: oregon
+    buildCommand: npm ci && npm run build
     startCommand: npm start
     plan: free
+    envVars:
+      - key: NODE_VERSION
+        value: 18.17.0
