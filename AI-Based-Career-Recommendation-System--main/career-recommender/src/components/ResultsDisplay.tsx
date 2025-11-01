@@ -4,6 +4,20 @@ import { Target, TrendingUp, Award, Users, Lightbulb, Star, Trophy, Heart, Brain
 import PersonalizedInterestChart from './PersonalizedInterestChart';
 import JobsSection from './JobsSection';
 
+interface SkillData {
+  skill: string;
+  score: number;
+  fill: string;
+  id: string;
+}
+
+interface CareerMatch {
+  career: string;
+  match: number;
+  fill: string;
+  id: string;
+}
+
 interface ResultsDisplayProps {
   result: any;
   loading: boolean;
@@ -37,11 +51,11 @@ export default function ResultsDisplay({ result, loading }: ResultsDisplayProps)
   }
 
   // Generate dynamic skill data based on user's actual selections
-  const generateSkillData = () => {
+  const generateSkillData = (): SkillData[] => {
     const userSkills = result.formData.skills.slice(0, 5); // Show up to 5 skills
     // Generate realistic scores between 70-95 for selected skills
     const baseScores = [92, 85, 78, 73, 68];
-    return userSkills.map((skill: string, index: number) => ({
+    return userSkills.map((skill: string, index: number): SkillData => ({
       skill,
       score: baseScores[index] || (70 + Math.floor(Math.random() * 20)),
       fill: SKILL_COLORS[index] || '#6B7280',
@@ -49,7 +63,7 @@ export default function ResultsDisplay({ result, loading }: ResultsDisplayProps)
     }));
   };
 
-  const generateCareerMatches = () => {
+  const generateCareerMatches = (): CareerMatch[] => {
     const predefinedCareers = [
       'Data Scientist',
       'UX Designer', 
@@ -67,7 +81,7 @@ export default function ResultsDisplay({ result, loading }: ResultsDisplayProps)
     });
     
     const matches = [91, 78, 65, 58, 52]; // Predefined match percentages
-    return uniqueCareers.map((career, index) => ({
+    return uniqueCareers.map((career, index): CareerMatch => ({
       career,
       match: matches[index] || 50,
       fill: CAREER_COLORS[index] || '#6B7280',
