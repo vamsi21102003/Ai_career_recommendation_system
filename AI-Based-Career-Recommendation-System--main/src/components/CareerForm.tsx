@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import axios from 'axios';
+import { useState, useEffect } from 'react';
 import { User, GraduationCap, Brain, Heart, Sparkles } from 'lucide-react';
 import MultiSelectDropdown from './MultiSelectDropdown';
+import { apiService } from '@/services/api';
 
 interface CareerFormProps {
   onResult: (result: any) => void;
@@ -11,21 +11,22 @@ interface CareerFormProps {
   setLoading: (loading: boolean) => void;
 }
 
-const skillOptions = [
+// Default options (fallback if API fails)
+const defaultSkillOptions = [
   'Python', 'JavaScript', 'Java', 'React', 'Node.js', 'Machine Learning', 
   'Data Analysis', 'UI/UX Design', 'Project Management', 'SQL', 'AWS', 
   'Docker', 'Git', 'Agile', 'Statistics', 'Adobe Creative Suite', 
   'System Design', 'Cloud Computing', 'Graphic Design', 'Digital Marketing'
 ];
 
-const interestOptions = [
+const defaultInterestOptions = [
   'Data Science', 'Technology', 'Software Development', 'Design', 
   'Digital Media', 'Analytics', 'Arts', 'Business', 'Innovation', 
   'Problem Solving', 'Creative Writing', 'Research', 'Leadership', 
   'Entrepreneurship', 'Education', 'Healthcare'
 ];
 
-const educationOptions = ["Bachelor's", "Master's", "PhD"];
+const defaultEducationOptions = ["Bachelor's", "Master's", "PhD"];
 
 export default function CareerForm({ onResult, loading, setLoading }: CareerFormProps) {
   const [formData, setFormData] = useState({
@@ -35,6 +36,27 @@ export default function CareerForm({ onResult, loading, setLoading }: CareerForm
     skills: [] as string[],
     interests: [] as string[]
   });
+
+  const [options, setOptions] = useState({
+    skills: defaultSkillOptions,
+    interests: defaultInterestOptions,
+    education: defaultEducationOptions
+  });
+
+  // Load options from API on component mount
+  useEffect(() => {
+    const loadOptions = async () => {
+      try {
+        const apiOptions = await apiService.getOptions();
+        setOptions(apiOptions);
+      } catch (error) {
+        console.error('Failed to load options from API, using defaults:', error);
+        // Keep default options if API fails
+      }
+    };
+
+    loadOptions();
+  }, []);
 
   const handleSkillToggle = (skill: string) => {
     setFormData(prev => ({
@@ -78,11 +100,12 @@ export default function CareerForm({ onResult, loading, setLoading }: CareerForm
 
     setLoading(true);
     try {
-      const response = await axios.post('http://localhost:5000/predict', formData);
-      onResult({ ...response.data, formData });
+      const response = await apiService.predictCareer(formData);
+      onResult({ ...response, formData });
     } catch (error) {
       console.error('Error:', error);
-      alert('Error getting recommendation. Make sure the Flask server is running on port 5000.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Error getting recommendation: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -142,7 +165,7 @@ export default function CareerForm({ onResult, loading, setLoading }: CareerForm
           suppressHydrationWarning
         >
           <option value="">🎓 Select your education level</option>
-          {educationOptions.map(edu => (
+          {options.education.map(edu => (
             <option key={edu} value={edu}>{edu}</option>
           ))}
         </select>
@@ -153,7 +176,7 @@ export default function CareerForm({ onResult, loading, setLoading }: CareerForm
         <MultiSelectDropdown
           label="Skills"
           icon={<Brain className="w-5 h-5 mr-2" />}
-          options={skillOptions}
+          options={options.skills}
           selectedValues={formData.skills}
           onToggle={handleSkillToggle}
           onRemove={removeSkill}
@@ -167,7 +190,7 @@ export default function CareerForm({ onResult, loading, setLoading }: CareerForm
         <MultiSelectDropdown
           label="Interests"
           icon={<Heart className="w-5 h-5 mr-2" />}
-          options={interestOptions}
+          options={options.interests}
           selectedValues={formData.interests}
           onToggle={handleInterestToggle}
           onRemove={removeInterest}
